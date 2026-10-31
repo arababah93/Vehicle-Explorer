@@ -5,6 +5,11 @@ Accept: application/json
 
 ###
 
+GET {{VehicleExplorer.Api_HostAddress}}/api/makes?prefix=hon&skip=0&take=40
+Accept: application/json
+
+###
+
 GET {{VehicleExplorer.Api_HostAddress}}/api/makes/474/vehicle-types
 Accept: application/json
 

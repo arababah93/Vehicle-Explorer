@@ -140,6 +140,56 @@ public sealed class NhtsaVehicleClientTests
 public sealed class VehicleCatalogTests
 {
     [Fact]
+    public async Task GetMakes_filters_by_prefix_and_returns_one_page()
+    {
+        var client = new FakeNhtsaClient
+        {
+            Makes =
+            [
+                new Make(1, "HONDA"),
+                new Make(2, "HONGQI"),
+                new Make(3, "TOYOTA")
+            ]
+        };
+        var catalog = CreateCatalog(client);
+
+        var page = await catalog.GetMakesAsync("ho", 0, 1, CancellationToken.None);
+
+        Assert.Equal(2, page.Total);
+        var item = Assert.Single(page.Items);
+        Assert.Equal("HONDA", item.Name);
+    }
+
+    [Fact]
+    public async Task GetMakes_without_prefix_skips_to_the_requested_slice()
+    {
+        var client = new FakeNhtsaClient
+        {
+            Makes =
+            [
+                new Make(1, "HONDA"),
+                new Make(2, "HONGQI"),
+                new Make(3, "TOYOTA")
+            ]
+        };
+        var catalog = CreateCatalog(client);
+
+        var page = await catalog.GetMakesAsync("  ", 1, 1, CancellationToken.None);
+
+        Assert.Equal(3, page.Total);
+        Assert.Equal("HONGQI", Assert.Single(page.Items).Name);
+    }
+
+    [Fact]
+    public async Task GetMakes_rejects_negative_skip()
+    {
+        var catalog = CreateCatalog(new FakeNhtsaClient());
+
+        await Assert.ThrowsAsync<InvalidVehicleQueryException>(
+            () => catalog.GetMakesAsync(null, -1, 10, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task GetModels_rejects_year_1995_without_calling_client()
     {
         var client = new FakeNhtsaClient();
@@ -186,9 +236,11 @@ public sealed class VehicleCatalogTests
     {
         public int ModelCalls { get; private set; }
 
+        public IReadOnlyList<Make> Makes { get; init; } = [];
+
         public Task<IReadOnlyList<Make>> GetMakesAsync(CancellationToken cancellationToken)
         {
-            return Task.FromResult<IReadOnlyList<Make>>([]);
+            return Task.FromResult(Makes);
         }
 
         public Task<IReadOnlyList<VehicleType>> GetVehicleTypesAsync(int makeId, CancellationToken cancellationToken)

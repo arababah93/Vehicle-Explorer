@@ -4,7 +4,7 @@ namespace VehicleExplorer.Application.Abstractions;
 
 public interface IVehicleCatalog
 {
-    Task<IReadOnlyList<Make>> GetMakesAsync(CancellationToken cancellationToken);
+    Task<PagedResult<Make>> GetMakesAsync(string? prefix, int skip, int take, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<VehicleType>> GetVehicleTypesAsync(int makeId, CancellationToken cancellationToken);
 

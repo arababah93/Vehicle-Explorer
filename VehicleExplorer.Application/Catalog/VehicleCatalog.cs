@@ -7,16 +7,40 @@ namespace VehicleExplorer.Application.Catalog;
 
 public sealed class VehicleCatalog(INhtsaVehicleClient client, IMemoryCache cache) : IVehicleCatalog
 {
+    public const int DefaultPageSize = 40;
+    public const int MaxPageSize = 100;
+
     private static readonly TimeSpan MakesTtl = TimeSpan.FromHours(12);
     private static readonly TimeSpan LookupTtl = TimeSpan.FromHours(1);
 
-    public Task<IReadOnlyList<Make>> GetMakesAsync(CancellationToken cancellationToken)
+    public async Task<PagedResult<Make>> GetMakesAsync(
+        string? prefix,
+        int skip,
+        int take,
+        CancellationToken cancellationToken)
     {
-        return GetOrFetchAsync(
+        if (skip < 0)
+        {
+            throw new InvalidVehicleQueryException("Skip must be zero or greater.");
+        }
+
+        if (take < 1 || take > MaxPageSize)
+        {
+            throw new InvalidVehicleQueryException($"Take must be between 1 and {MaxPageSize}.");
+        }
+
+        var makes = await GetOrFetchAsync(
             "makes",
             MakesTtl,
             token => client.GetMakesAsync(token),
             cancellationToken);
+
+        var filter = string.IsNullOrWhiteSpace(prefix) ? null : prefix.Trim();
+        var matched = filter is null
+            ? makes
+            : makes.Where(make => make.Name.StartsWith(filter, StringComparison.OrdinalIgnoreCase)).ToArray();
+
+        return new PagedResult<Make>(matched.Skip(skip).Take(take).ToArray(), matched.Count);
     }
 
     public Task<IReadOnlyList<VehicleType>> GetVehicleTypesAsync(int makeId, CancellationToken cancellationToken)

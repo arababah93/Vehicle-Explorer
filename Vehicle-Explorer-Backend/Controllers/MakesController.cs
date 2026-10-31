@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using VehicleExplorer.Application.Abstractions;
+using VehicleExplorer.Application.Catalog;
 using VehicleExplorer.Domain;
 
 namespace VehicleExplorer.Api.Controllers;
@@ -9,9 +10,13 @@ namespace VehicleExplorer.Api.Controllers;
 public sealed class MakesController(IVehicleCatalog catalog) : ControllerBase
 {
     [HttpGet]
-    public async Task<IReadOnlyList<Make>> GetMakes(CancellationToken cancellationToken)
+    public async Task<PagedResult<Make>> GetMakes(
+        [FromQuery] string? prefix,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = VehicleCatalog.DefaultPageSize,
+        CancellationToken cancellationToken = default)
     {
-        return await catalog.GetMakesAsync(cancellationToken);
+        return await catalog.GetMakesAsync(prefix, skip, take, cancellationToken);
     }
 
     [HttpGet("{makeId:int}/vehicle-types")]
