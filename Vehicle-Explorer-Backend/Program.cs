@@ -1,3 +1,4 @@
+using Swashbuckle.AspNetCore.SwaggerUI;
 using VehicleExplorer.Api;
 using VehicleExplorer.Application;
 using VehicleExplorer.Infrastructure;
@@ -27,6 +28,10 @@ app.UseExceptionHandler();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/openapi/v1.json", "Vehicle Explorer API");
+    });
 }
 
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
