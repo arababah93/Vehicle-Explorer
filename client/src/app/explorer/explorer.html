@@ -6,47 +6,59 @@
   </header>
 
   <section class="panel">
-    <label class="field">
-      <span>Make</span>
-      <input
-        type="search"
-        [value]="prefix()"
-        (input)="onPrefixInput($any($event.target).value)"
-        placeholder="Search by name, for example hon"
-        autocomplete="off"
-      />
-    </label>
+    <div class="make-picker">
+      <span id="make-label">Make</span>
+      <button
+        type="button"
+        class="make-trigger"
+        aria-haspopup="listbox"
+        aria-labelledby="make-label"
+        [attr.aria-expanded]="makesOpen()"
+        (click)="toggleMakes()"
+      >
+        {{ selectedMake()?.name ?? 'Select a make' }}
+      </button>
 
-    @if (selectedMake(); as make) {
-      <p class="selected">Selected make: {{ make.name }}</p>
-    }
-
-    <div class="make-list" role="listbox" aria-label="Makes">
-      @if (makesStatus() === 'loading' && makes().length === 0) {
-        <p class="status">Loading makes…</p>
-      } @else if (makesStatus() === 'error' && makes().length === 0) {
-        <p class="status">Makes could not be loaded.</p>
-        <button type="button" (click)="retryMakes()">Retry</button>
-      } @else if (makes().length === 0) {
-        <p class="status">No makes match that prefix.</p>
-      } @else {
-        @for (make of makes(); track make.id) {
-          <button
-            type="button"
-            role="option"
-            [attr.aria-selected]="selectedMake()?.id === make.id"
-            [class.active]="selectedMake()?.id === make.id"
-            (click)="selectMake(make)"
-          >
-            {{ make.name }}
-          </button>
-        }
-        @if (canLoadMore()) {
-          <button type="button" class="more" (click)="loadMore()" [disabled]="loadingMore()">
-            {{ loadingMore() ? 'Loading…' : 'Load more' }}
-          </button>
-        }
-        <p class="count">{{ makes().length }} of {{ totalMakes() }}</p>
+      @if (makesOpen()) {
+        <button type="button" class="backdrop" aria-label="Close makes" (click)="closeMakes()"></button>
+        <div class="make-menu">
+          <input
+            type="search"
+            [value]="prefix()"
+            (input)="onPrefixInput($any($event.target).value)"
+            placeholder="Search by name, for example hon"
+            autocomplete="off"
+            aria-label="Filter makes"
+          />
+          <div class="make-options" role="listbox" aria-label="Makes" (scroll)="onMakesScroll($event)">
+            @if (makesStatus() === 'loading' && makes().length === 0) {
+              <p class="status">Loading makes…</p>
+            } @else if (makesStatus() === 'error' && makes().length === 0) {
+              <p class="status">Makes could not be loaded.</p>
+              <button type="button" (click)="retryMakes()">Retry</button>
+            } @else if (makes().length === 0) {
+              <p class="status">No makes match that prefix.</p>
+            } @else {
+              @for (make of makes(); track make.id) {
+                <button
+                  type="button"
+                  role="option"
+                  [attr.aria-selected]="selectedMake()?.id === make.id"
+                  [class.active]="selectedMake()?.id === make.id"
+                  (click)="selectMake(make)"
+                >
+                  {{ make.name }}
+                </button>
+              }
+              @if (loadingMore()) {
+                <p class="status">Loading more…</p>
+              }
+            }
+          </div>
+          @if (makes().length > 0) {
+            <p class="count">{{ makes().length }} of {{ totalMakes() }}</p>
+          }
+        </div>
       }
     </div>
 

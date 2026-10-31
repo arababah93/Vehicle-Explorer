@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, HostListener, inject, OnInit, signal } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { Make, Model, VehicleType } from '../models';
 import { VehicleApi } from '../vehicle-api';
@@ -14,6 +14,7 @@ export class Explorer implements OnInit {
   private requestId = 0;
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
 
+  protected readonly makesOpen = signal(false);
   protected readonly prefix = signal('');
   protected readonly makes = signal<Make[]>([]);
   protected readonly totalMakes = signal(0);
@@ -43,10 +44,31 @@ export class Explorer implements OnInit {
     this.reloadMakes();
   }
 
+  protected toggleMakes(): void {
+    this.makesOpen.update((open) => !open);
+  }
+
+  protected closeMakes(): void {
+    this.makesOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  protected closeMakesOnEscape(): void {
+    this.closeMakes();
+  }
+
   protected onPrefixInput(value: string): void {
     this.prefix.set(value);
     clearTimeout(this.searchTimer);
     this.searchTimer = setTimeout(() => this.reloadMakes(), 300);
+  }
+
+  protected onMakesScroll(event: Event): void {
+    const list = event.target as HTMLElement;
+    const nearBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 32;
+    if (nearBottom) {
+      this.loadMore();
+    }
   }
 
   protected loadMore(): void {
@@ -71,6 +93,7 @@ export class Explorer implements OnInit {
     this.selectedType.set(null);
     this.types.set([]);
     this.models.set([]);
+    this.closeMakes();
     this.loadResults();
   }
 
