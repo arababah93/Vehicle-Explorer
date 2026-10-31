@@ -1,4 +1,4 @@
-import { Component, computed, HostListener, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, ElementRef, HostListener, inject, OnInit, signal, viewChild } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { Make, Model, VehicleType } from '../models';
 import { VehicleApi } from '../vehicle-api';
@@ -6,10 +6,10 @@ import { VehicleApi } from '../vehicle-api';
 @Component({
   selector: 'app-explorer',
   templateUrl: './explorer.html',
-  styleUrl: './explorer.css',
 })
 export class Explorer implements OnInit {
   private readonly api = inject(VehicleApi);
+  private readonly makeSearch = viewChild<ElementRef<HTMLInputElement>>('makeSearch');
   private readonly pageSize = 40;
   private requestId = 0;
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -26,6 +26,7 @@ export class Explorer implements OnInit {
   protected readonly selectedType = signal<string | null>(null);
   protected readonly models = signal<Model[]>([]);
   protected readonly resultsStatus = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  protected readonly modelsBusy = signal(false);
 
   protected readonly years = computed(() => {
     const current = new Date().getFullYear();
@@ -45,7 +46,15 @@ export class Explorer implements OnInit {
   }
 
   protected toggleMakes(): void {
-    this.makesOpen.update((open) => !open);
+    const open = !this.makesOpen();
+    this.makesOpen.set(open);
+    if (open) {
+      setTimeout(() => this.makeSearch()?.nativeElement.focus());
+    }
+  }
+
+  protected formatCount(value: number): string {
+    return value.toLocaleString('en-US');
   }
 
   protected closeMakes(): void {
@@ -155,6 +164,7 @@ export class Explorer implements OnInit {
     }
 
     this.resultsStatus.set('loading');
+    this.modelsBusy.set(false);
     this.selectedType.set(null);
     forkJoin({
       types: this.api.getVehicleTypes(make.id),
@@ -176,13 +186,17 @@ export class Explorer implements OnInit {
       return;
     }
 
-    this.resultsStatus.set('loading');
+    this.modelsBusy.set(true);
     this.api.getModels(make.id, year, this.selectedType()).subscribe({
       next: (models) => {
         this.models.set(models);
+        this.modelsBusy.set(false);
         this.resultsStatus.set('ready');
       },
-      error: () => this.resultsStatus.set('error'),
+      error: () => {
+        this.modelsBusy.set(false);
+        this.resultsStatus.set('error');
+      },
     });
   }
 }
