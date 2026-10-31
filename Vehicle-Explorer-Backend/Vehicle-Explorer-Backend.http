@@ -1,0 +1,16 @@
+@VehicleExplorer.Api_HostAddress = http://localhost:5080
+
+GET {{VehicleExplorer.Api_HostAddress}}/health
+Accept: application/json
+
+###
+
+GET {{VehicleExplorer.Api_HostAddress}}/api/makes/474/vehicle-types
+Accept: application/json
+
+###
+
+GET {{VehicleExplorer.Api_HostAddress}}/api/makes/474/models?year=2015
+Accept: application/json
+
+###
