@@ -1,0 +1,12 @@
+.git
+.vs
+**/.vs
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.angular
+**/*.user
+**/*.suo
+VehicleExplorer.Tests
+*.md

@@ -15,7 +15,8 @@
       <p>Search the catalog, pick a model year, then narrow the models by vehicle type.</p>
     </section>
 
-    <section class="card query">
+    <section class="panel">
+      <div class="query">
       <div class="make-picker">
         <span id="make-label" class="label">Make</span>
         <button
@@ -92,10 +93,11 @@
           <span class="hint">Choose a make first</span>
         }
       </label>
-    </section>
+      </div>
 
+      <div class="panel-body">
     @if (resultsStatus() === 'idle') {
-      <section class="card empty">
+      <div class="empty">
         @if (selectedMake(); as make) {
           <h2>{{ make.name }}</h2>
           <p>Select a model year to load vehicle types and models.</p>
@@ -103,9 +105,9 @@
           <h2>Start with a make</h2>
           <p>Open the list, search by prefix, and scroll to load more names.</p>
         }
-      </section>
+      </div>
     } @else if (resultsStatus() === 'loading') {
-      <section class="card results" aria-busy="true">
+      <div class="results" aria-busy="true">
         <div class="results-head">
           <div>
             <h2>{{ selectedMake()?.name }}</h2>
@@ -116,61 +118,61 @@
           <span></span><span></span><span></span><span></span>
         </div>
         <p class="hint">Loading vehicles…</p>
-      </section>
+      </div>
     } @else if (resultsStatus() === 'error') {
-      <section class="card alert" role="alert">
+      <div class="alert" role="alert">
         <h2>Vehicle data could not be loaded</h2>
         <p>The catalog request failed. Your make and year are still selected.</p>
         <button type="button" class="btn" (click)="retryResults()">Try again</button>
-      </section>
+      </div>
     } @else {
-      <section class="card results">
+      <div class="results">
         <div class="results-head">
           <div>
             <h2>{{ selectedMake()?.name }}</h2>
-            <p>{{ selectedYear() }} · {{ formatCount(models().length) }} models</p>
+            <p>
+              {{ selectedYear() }} · {{ formatCount(models().length) }} models
+              @if (modelsBusy()) {
+                <span class="updating">Updating…</span>
+              }
+            </p>
           </div>
-        </div>
-
-        <div class="type-block">
-          <span class="label" id="type-label">Vehicle type</span>
-          <div class="types" role="group" aria-labelledby="type-label">
-            <button
-              type="button"
-              [attr.aria-pressed]="selectedType() === null"
-              [class.active]="selectedType() === null"
-              (click)="selectType(null)"
+          <label class="field type-block">
+            <span class="label">Vehicle type</span>
+            <select
+              class="control"
+              [value]="selectedType() ?? ''"
+              (change)="selectType($any($event.target).value)"
             >
-              All types
-            </button>
-            @for (type of types(); track type.id) {
-              <button
-                type="button"
-                [attr.aria-pressed]="selectedType() === type.name"
-                [class.active]="selectedType() === type.name"
-                (click)="selectType(type.name)"
-              >
-                {{ type.name }}
-              </button>
-            }
-          </div>
+              <option value="">All types</option>
+              @for (type of types(); track type.id) {
+                <option [value]="type.name" [selected]="selectedType() === type.name">{{ type.name }}</option>
+              }
+            </select>
+          </label>
         </div>
 
         <div class="model-block" [class.busy]="modelsBusy()">
           @if (models().length === 0) {
             <p class="menu-status">No models found for this make, year, and type.</p>
           } @else {
-            <ul class="model-grid">
-              @for (model of models(); track model.id) {
-                <li>{{ model.name }}</li>
+            <div class="directory">
+              @for (group of modelGroups(); track group.letter) {
+                <div class="letter-group">
+                  <span class="letter" aria-hidden="true">{{ group.letter }}</span>
+                  <ul>
+                    @for (model of group.models; track model.id) {
+                      <li>{{ model.name }}</li>
+                    }
+                  </ul>
+                </div>
               }
-            </ul>
-          }
-          @if (modelsBusy()) {
-            <p class="hint">Updating models…</p>
+            </div>
           }
         </div>
-      </section>
+      </div>
     }
+      </div>
+    </section>
   </main>
 </div>

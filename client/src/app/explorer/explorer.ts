@@ -37,6 +37,20 @@ export class Explorer implements OnInit {
     return years;
   });
 
+  protected readonly modelGroups = computed(() => {
+    const groups: { letter: string; models: Model[] }[] = [];
+    for (const model of this.models()) {
+      const letter = (model.name[0] ?? '#').toLocaleUpperCase();
+      const current = groups.at(-1);
+      if (current?.letter === letter) {
+        current.models.push(model);
+      } else {
+        groups.push({ letter, models: [model] });
+      }
+    }
+    return groups;
+  });
+
   protected readonly canLoadMore = computed(
     () => this.makesStatus() === 'ready' && this.makes().length < this.totalMakes(),
   );
@@ -112,8 +126,8 @@ export class Explorer implements OnInit {
     this.loadResults();
   }
 
-  protected selectType(name: string | null): void {
-    this.selectedType.set(name);
+  protected selectType(name: string): void {
+    this.selectedType.set(name ? name : null);
     this.loadModels();
   }
 
