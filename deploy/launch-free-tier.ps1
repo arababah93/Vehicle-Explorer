@@ -8,7 +8,8 @@ if (-not (Get-Command aws -ErrorAction SilentlyContinue)) {
 
 aws sts get-caller-identity | Out-Null
 
-$region = if ($env:AWS_REGION) { $env:AWS_REGION } else { "us-east-1" }
+# This account's free plan can launch only in eu-north-1 (Stockholm).
+$region = if ($env:AWS_REGION) { $env:AWS_REGION } else { "eu-north-1" }
 $groupName = "vehicle-explorer-web"
 
 $ami = aws ssm get-parameter `

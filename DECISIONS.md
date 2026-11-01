@@ -40,7 +40,7 @@ Two images:
 - The API image publishes the .NET project and runs `VehicleExplorer.API.dll` on port 8080.
 - The web image builds the Angular app, then copies the browser output into nginx.
 
-Compose publishes the web container on port 8080 locally. On the EC2 instance `WEB_PORT=80` matches the security group. The instance is a `t3.micro`, so user-data adds a 2 GB swap file and builds one image at a time.
+Compose publishes the web container on port 8080 locally. On the EC2 instance `WEB_PORT=80` matches the security group. The instance is a `t3.micro`, so user-data adds a 2 GB swap file and builds one image at a time. Amazon Linux's Docker package does not include Buildx, and Compose 2.40 refuses to build without it, so user-data also installs the Buildx plugin.
 
 ## Assumptions
 

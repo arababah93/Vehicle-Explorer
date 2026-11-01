@@ -46,7 +46,7 @@ Stop it with `docker compose down`.
 
 ## Host it on AWS Free Tier
 
-The live site is one Amazon Linux 2023 `t3.micro` instance. Port 80 is the only port opened. The instance installs Docker, clones this public repository, and runs the same Compose stack with `WEB_PORT=80`.
+The live site is one Amazon Linux 2023 `t3.micro` instance in `eu-north-1` (Stockholm). This free plan cannot launch in other regions. Port 80 is the only port opened. The instance installs Docker, clones this public repository, and runs the same Compose stack with `WEB_PORT=80`.
 
 Push this repository to GitHub before you launch. The instance clones `https://github.com/arababah93/Vehicle-Explorer.git`, so it builds whatever is on `main`.
 
@@ -60,4 +60,4 @@ The script prints `http://<public-dns>`. The first boot compiles both images on 
 
 Stop the instance when you are finished reviewing it. The script prints the `aws ec2 stop-instances` command.
 
-Live site: not published from this machine. After you push and run the script, it prints `http://<public-dns>`. Put that address here before you submit.
+Live site: http://ec2-13-62-126-176.eu-north-1.compute.amazonaws.com
