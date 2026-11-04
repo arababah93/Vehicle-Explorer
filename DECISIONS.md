@@ -1,58 +1,34 @@
 # Design decisions
 
-## What this slice does
+The app lets a visitor pick a make and a model year, then see the vehicle types for that make and the models for that make and year. Choosing a type reloads the models through the type-specific NHTSA call. The browser never calls vPIC itself.
 
-A visitor chooses a make and a model year, then sees the vehicle types for that make and the models for that make and year. Choosing a type reloads the models through the type-specific NHTSA call. The browser never calls vPIC itself.
+## Decisions
 
-## Makes are paged in our API
+**The API owns the NHTSA calls.** Angular talks only to this API. That keeps caching, timeouts, and DTO shaping in one place, and it avoids a browser CORS dependency on vPIC.
 
-`getallmakes` returns the whole catalog in one payload. The API downloads that list, caches it, and returns a page of 40 names. The UI can pass a `prefix` so a search for `hon` does not ship every make to the browser, and it asks for the next page when the list is scrolled.
+**Clean Architecture.** The API host is thin. Domain holds the make, type, and model types. Application holds the catalog use cases and paging. Infrastructure holds the NHTSA client. The host only composes those projects through dependency injection. The first version was a single Web API project. I split it so each layer can be explained and changed on its own.
 
-Trade-off: the first request in a process still waits on the full NHTSA download. After that, paging and prefix checks are local. A database would make the first byte faster and would let us page without holding the list in memory. For a read-only catalog and a few-hour assignment, the in-memory page is enough.
+**Makes are paged.** `getallmakes` returns the whole catalog in one payload. The API downloads that list, caches it, and returns a page of 40 names. The dropdown sends `prefix`, `skip`, and `take`. A search for `hon` does not ship every make to the browser, and scrolling asks for the next page. The first version returned every make in one response, which was too large for the control.
 
-## Cache
+**Years start at 1996.** The year list in the UI and `VehicleCatalog` both run from 1996 through the current calendar year. Requests for 1995 and earlier are rejected before NHTSA is called.
 
-| Data | How long it stays |
-| --- | --- |
-| All makes | 12 hours |
-| Types for a make, and models for a make/year/type | 1 hour |
+**NHTSA names are trimmed.** vPIC sometimes returns a vehicle type with a trailing space, such as `"Truck "`. The stored name is trimmed, and that trimmed name is what the models URL sends. A test covers the trim, because an untrimmed name misses the type filter.
 
-The cache is `IMemoryCache` inside the API process. A restart, or a second instance, starts cold. That is acceptable on one small machine. The next step is a shared cache so a deploy does not make the next visitor wait on `getallmakes` again.
+**One origin in production.** The production Angular build calls `/api` on the same host. nginx serves the static files and proxies `/api` and `/health` to the API container. Local `ng serve` is the exception: it runs on port 4200, and the API allows only that origin in CORS. Swagger stays on in Development. Production exposes `/health` for the container check.
 
-## Model years start at 1996
-
-The year list in the UI and `VehicleCatalog` both begin at 1996 and run through the current calendar year. Requests for 1995 and earlier are rejected before NHTSA is called. That keeps the picker and the API on the same rule.
-
-## Names from NHTSA are trimmed
-
-vPIC sometimes returns a vehicle type with a trailing space, such as `"Truck "`. The client stores the trimmed name and sends that trimmed name when a type is selected. The models URL is built from that value. A test covers the trim, because an untrimmed name misses the type filter.
-
-## One host in production
-
-The production Angular build calls `/api` on the same origin. nginx serves the static files and proxies `/api` and `/health` to the API container. Local `ng serve` is the exception: it runs on port 4200 and the API allows that origin in CORS. The deployed site does not need a wide-open CORS policy.
-
-Swagger stays on in Development only. Production exposes `/health` for the container check.
-
-## Docker
-
-Two images:
-
-- The API image publishes the .NET project and runs `VehicleExplorer.API.dll` on port 8080.
-- The web image builds the Angular app, then copies the browser output into nginx.
-
-Compose publishes the web container on port 8080 locally. On the EC2 instance `WEB_PORT=80` matches the security group. The instance is a `t3.micro`, so user-data adds a 2 GB swap file and builds one image at a time. Amazon Linux's Docker package does not include Buildx, and Compose 2.40 refuses to build without it, so user-data also installs the Buildx plugin.
+**Two images.** The API image publishes the .NET project and runs `VehicleExplorer.API.dll` on port 8080. The web image builds the Angular app and copies the browser output into nginx. Compose publishes the web container on port 8080 locally. On the EC2 instance `WEB_PORT=80` matches the security group. The instance is a `t3.micro`, so startup adds a 2 GB swap file and builds one image at a time. Amazon Linux's Docker package does not include Buildx, and Compose 2.40 refuses to build without it, so startup also installs the Buildx plugin.
 
 ## Assumptions
 
 - NHTSA vPIC needs no API key and is reachable from the host that runs the API.
 - A make id and a model year are enough to show types and models. The type control is a filter on top of that, using the fourth vPIC endpoint.
 - One process and one instance are enough for review traffic.
-- The public GitHub repository is what the instance clones. A launch before that push builds an older tree.
+- The instance clones the public GitHub repository, so it builds whatever is on `main` at launch.
 
-## Trade-offs I would revisit
+## Trade-offs
 
-- In-memory cache and in-memory paging of makes.
-- HTTP only. HTTPS needs a certificate and a name; the free-tier box is addressed by its public DNS.
+- The cache is `IMemoryCache` inside the API process. Makes stay for 12 hours. Types and models stay for 1 hour. A restart, or a second instance, starts cold. The first request in a process still waits on the full NHTSA makes download. After that, paging and prefix checks are local. A database would make the first byte faster and would page without holding the list in memory. For a read-only catalog, the in-memory page is enough.
+- HTTP only. HTTPS needs a certificate and a name. The free-tier box is addressed by its public DNS.
 - No rate limit in front of NHTSA. The cache is the only protection against repeat clicks.
 - No shared error page beyond the UI retry states and the API problem responses.
 
@@ -65,6 +41,6 @@ Compose publishes the web container on port 8080 locally. On the EC2 instance `W
 
 ## How AI was used
 
-An assistant helped scaffold the API, the Angular explorer, the tests, and the container files. I kept the parts that match the NHTSA payloads and the tests, and I checked the running behavior.
+I used AI for implementation options and for troubleshooting. I checked the suggestions against the NHTSA payloads and the running app, and I kept the design calls above.
 
-One thing it got wrong: while Swagger was being added, the assistant treated a document that said `openapi: "3.0.4"` as invalid and rewrote that field to `3.0.1`. The document was valid. Swagger UI shipped with Swashbuckle 6.6.2 rejects 3.0.4, and after a package upgrade the browser kept the old UI scripts for a week, so the page still failed. The API now serves the built-in OpenAPI document at `/openapi/v1.json` and loads Swagger UI 10, which accepts that version. The document is not rewritten.
+One thing it got wrong: while Swagger was being added, a document that said `openapi: "3.0.4"` was treated as invalid and rewritten to `3.0.1`. The document was valid. Swagger UI shipped with Swashbuckle 6.6.2 rejects 3.0.4, and after a package upgrade the browser kept the old UI scripts, so the page still failed. I stopped rewriting the document. The API now serves the built-in OpenAPI document at `/openapi/v1.json` and loads Swagger UI 10, which accepts that version.
